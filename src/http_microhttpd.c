@@ -53,7 +53,7 @@ static int get_host_value_callback(void *cls, enum MHD_ValueKind kind, const cha
 static int serve_file(struct MHD_Connection *connection, t_client *client, const char *url);
 static int show_splashpage(struct MHD_Connection *connection, t_client *client);
 static int show_statuspage(struct MHD_Connection *connection, t_client *client);
-static int encode_and_redirect_to_splashpage(struct MHD_Connection *connection, const char *originurl);
+static int encode_and_redirect_to_splashpage(struct MHD_Connection *connection, const char *originurl, char *token);
 static int redirect_to_splashpage(struct MHD_Connection *connection, t_client *client, const char *host, const char *url);
 static int send_error(struct MHD_Connection *connection, int error);
 static int send_redirect_temp(struct MHD_Connection *connection, const char *url);
@@ -433,11 +433,12 @@ static int authenticate_client(struct MHD_Connection *connection,
 	int upload = 0;
 	int download = 0;
 	int rc;
+	char *token = NULL;
 
 	if (config->binauth) {
 		rc = do_binauth(connection, config->binauth, client, &seconds, &upload, &download);
 		if (rc != 0) {
-			return encode_and_redirect_to_splashpage(connection, redirect_url);
+			return encode_and_redirect_to_splashpage(connection, redirect_url, token);
 		}
 		rc = auth_client_auth(client->id, "client_auth");
 	} else {
@@ -527,6 +528,7 @@ static int preauthenticated(struct MHD_Connection *connection,
 {
 	const char *host = NULL;
 	const char *redirect_url;
+	char *token = NULL;
 	s_config *config = config_get_config();
 
 	MHD_get_connection_values(connection, MHD_HEADER_KIND, get_host_value_callback, &host);
@@ -552,7 +554,7 @@ static int preauthenticated(struct MHD_Connection *connection,
 
 		if (!try_to_authenticate(connection, client, host, url)) {
 			/* user used an invalid token, redirect to splashpage but hold query "redir" intact */
-			return encode_and_redirect_to_splashpage(connection, redirect_url);
+			return encode_and_redirect_to_splashpage(connection, redirect_url, token);
 		}
 
 		return authenticate_client(connection, redirect_url, client);
@@ -573,9 +575,11 @@ static int preauthenticated(struct MHD_Connection *connection,
  * @param originurl
  * @return
  */
-static int encode_and_redirect_to_splashpage(struct MHD_Connection *connection, const char *originurl)
+static int encode_and_redirect_to_splashpage(struct MHD_Connection *connection, const char *originurl, char *token )
 {
 	char *splashpageurl = NULL;
+	char *ip_address = NULL;
+	char *querydl = "?";
 	char encoded[2048];
 	int ret;
 	s_config *config = config_get_config();
@@ -589,19 +593,37 @@ static int encode_and_redirect_to_splashpage(struct MHD_Connection *connection, 
 		}
 	}
 
-	if (encoded[0]) {
-		safe_asprintf(&splashpageurl, "http://%s:%u/%s?redir=%s",
-			config->gw_address, config->gw_port, config->splashpage, encoded);
+	if (config->fas_port) {
+		safe_asprintf(&ip_address, "%s", config->gw_address);
+
+		if (config->fas_remoteip) {
+			safe_asprintf(&ip_address, "%s", config->fas_remoteip);
+		}
+		safe_asprintf(&splashpageurl, "http://%s:%u%s",
+			ip_address, config->fas_port, config->fas_path);
+		if (config->fas_secure_enabled != 1) {
+			querydl = "&";
+			safe_asprintf(&splashpageurl, "%s?authaction=http://%s:%u/%s/?tok=%s",
+				splashpageurl, config->gw_address, config->gw_port, config->authdir, token);
+		} else {
+			querydl = "&";
+			safe_asprintf(&splashpageurl, "%s?clientip=%s",
+				splashpageurl, token);
+		}
 	} else {
 		safe_asprintf(&splashpageurl, "http://%s:%u/%s",
 			config->gw_address, config->gw_port, config->splashpage);
+	}
+
+	if (encoded[0]) {
+		safe_asprintf(&splashpageurl, "%s%sredir=%s", splashpageurl, querydl, encoded);
 	}
 
 	debug(LOG_DEBUG, "splashpageurl: %s", splashpageurl);
 
 	ret = send_redirect_temp(connection, splashpageurl);
 	free(splashpageurl);
-
+	free(ip_address);
 	return ret;
 }
 
@@ -618,16 +640,23 @@ static int redirect_to_splashpage(struct MHD_Connection *connection, t_client *c
 	char *originurl = NULL;
 	char *query = NULL;
 	int ret = 0;
+	char *token = NULL;
+	s_config *config = config_get_config();
 
 	get_query(connection, &query);
 	if (!query) {
 		/* no mem */
 		return send_error(connection, 503);
 	}
-
+	if (config->fas_secure_enabled != 1) {
+		safe_asprintf(&token, "%s", client->token);
+	} else {
+		safe_asprintf(&token, "%s", client->ip);
+	}
 	safe_asprintf(&originurl, "http://%s%s%s%s", host, url, strlen(query) ? "?" : "" , query);
-	ret = encode_and_redirect_to_splashpage(connection, originurl);
+	ret = encode_and_redirect_to_splashpage(connection, originurl, token);
 	free(originurl);
+	free(token);
 	free(query);
 	return ret;
 }
@@ -921,7 +950,8 @@ static int show_templated_page(struct MHD_Connection *connection, t_client *clie
 	sprintf(maxclients, "%d", config->maxclients);
 	safe_asprintf(&denyaction, "http://%s:%d/%s/", config->gw_address, config->gw_port, config->denydir);
 	safe_asprintf(&authaction, "http://%s:%d/%s/", config->gw_address, config->gw_port, config->authdir);
-	safe_asprintf(&authtarget, "http://%s:%d/%s/?tok=%s&amp;redir=%s", config->gw_address, config->gw_port, config->authdir, client->token, redirect_url);
+	safe_asprintf(&authtarget, "http://%s:%d/%s/?tok=%s&amp;redir=%s",
+		config->gw_address, config->gw_port, config->authdir, client->token, redirect_url);
 	safe_asprintf(&pagesdir, "/%s", config->pagesdir);
 	safe_asprintf(&imagesdir, "/%s", config->imagesdir);
 
