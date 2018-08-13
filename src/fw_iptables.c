@@ -511,7 +511,7 @@ iptables_fw_init(void)
 
 	// CHAIN_TO_ROUTER, packets to HTTP listening on fas_port on router ACCEPT
 	if (fas_port && !fas_remote) {
-	rc |= iptables_do_command("-t filter -A " CHAIN_TO_ROUTER " -p tcp --dport %d -j ACCEPT", fas_port);
+		rc |= iptables_do_command("-t filter -A " CHAIN_TO_ROUTER " -p tcp --dport %d -j ACCEPT", fas_port);
 	}
 
 	// CHAIN_TO_ROUTER, packets marked TRUSTED:
@@ -578,7 +578,7 @@ iptables_fw_init(void)
 
 	// Allow access to remote FAS - CHAIN_OUTGOING and CHAIN_TO_INTERNET packets for remote FAS, ACCEPT
 	if (fas_remote && fas_port) {
-	rc |= iptables_do_command("-t filter -A " CHAIN_TO_INTERNET " -p tcp --destination %s --dport %d -j ACCEPT", fas_remote, fas_port);
+		rc |= iptables_do_command("-t filter -A " CHAIN_TO_INTERNET " -p tcp --destination %s --dport %d -j ACCEPT", fas_remote, fas_port);
 	}
 
 	/* CHAIN_TO_INTERNET, packets marked TRUSTED: */

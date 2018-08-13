@@ -651,7 +651,7 @@ static int redirect_to_splashpage(struct MHD_Connection *connection, t_client *c
 	if (config->fas_secure_enabled != 1) {
 		safe_asprintf(&token, "%s", client->token);
 	} else {
-		safe_asprintf(&token, "%s", client->ip);
+		safe_asprintf(&token, "%s&gatewayname=%s", client->ip, config->gw_name);
 	}
 	safe_asprintf(&originurl, "http://%s%s%s%s", host, url, strlen(query) ? "?" : "" , query);
 	ret = encode_and_redirect_to_splashpage(connection, originurl, token);
