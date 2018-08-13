@@ -433,12 +433,11 @@ static int authenticate_client(struct MHD_Connection *connection,
 	int upload = 0;
 	int download = 0;
 	int rc;
-	char *token = NULL;
 
 	if (config->binauth) {
 		rc = do_binauth(connection, config->binauth, client, &seconds, &upload, &download);
 		if (rc != 0) {
-			return encode_and_redirect_to_splashpage(connection, redirect_url, token);
+			return encode_and_redirect_to_splashpage(connection, redirect_url, client->token);
 		}
 		rc = auth_client_auth(client->id, "client_auth");
 	} else {
