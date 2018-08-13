@@ -616,39 +616,6 @@ static int encode_and_redirect_to_splashpage(struct MHD_Connection *connection, 
 
 	return ret;
 }
-/*
-static int encode_and_redirect_to_splashpage(struct MHD_Connection *connection, const char *originurl)
-{
-	char *splashpageurl = NULL;
-	char encoded[2048];
-	int ret;
-	s_config *config = config_get_config();
-
-	memset(encoded, 0, sizeof(encoded));
-	if (originurl) {
-		if (uh_urlencode(encoded, sizeof(encoded), originurl, strlen(originurl)) == -1) {
-			debug(LOG_WARNING, "could not encode url");
-		} else {
-			debug(LOG_DEBUG, "originurl: %s", originurl);
-		}
-	}
-
-	if (encoded[0]) {
-		safe_asprintf(&splashpageurl, "http://%s:%u/%s?redir=%s",
-			config->gw_address, config->gw_port, config->splashpage, encoded);
-	} else {
-		safe_asprintf(&splashpageurl, "http://%s:%u/%s",
-			config->gw_address, config->gw_port, config->splashpage);
-	}
-
-	debug(LOG_DEBUG, "splashpageurl: %s", splashpageurl);
-
-	ret = send_redirect_temp(connection, splashpageurl);
-	free(splashpageurl);
-
-	return ret;
-}
-*/
 
 /**
  * @brief redirect_to_splashpage
