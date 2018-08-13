@@ -347,7 +347,7 @@ iptables_fw_init(void)
 	char *gw_address = NULL;
 	char *gw_iprange = NULL;
 	int gw_port = 0;
-	char *fas_remote;
+	char *fas_remoteip;
 	int fas_port;
 	int traffic_control;
 	int set_mss, mss_value;
@@ -363,7 +363,7 @@ iptables_fw_init(void)
 	gw_address = safe_strdup(config->gw_address);    /* must free */
 	gw_iprange = safe_strdup(config->gw_iprange);    /* must free */
 	gw_port = config->gw_port;
-	fas_remote = config->fas_remoteip;
+	fas_remoteip = config->fas_remoteip;
 	fas_port = config->fas_port;
 	pt = config->trustedmaclist;
 	pb = config->blockedmaclist;
@@ -463,8 +463,8 @@ iptables_fw_init(void)
 	rc |= _iptables_append_ruleset("nat", "preauthenticated-users", CHAIN_OUTGOING);
 
 	// Allow access to remote FAS - CHAIN_OUTGOING and CHAIN_TO_INTERNET packets for remote FAS, ACCEPT
-	if (fas_remote && fas_port) {
-	rc |= iptables_do_command("-t nat -A " CHAIN_OUTGOING " -p tcp --destination %s --dport %d -j ACCEPT", fas_remote, fas_port);
+	if (fas_remoteip && fas_port) {
+		rc |= iptables_do_command("-t nat -A " CHAIN_OUTGOING " -p tcp --destination %s --dport %d -j ACCEPT", fas_remoteip, fas_port);
 	}
 
 	// CHAIN_OUTGOING, packets for tcp port 80, redirect to gw_port on primary address for the iface
@@ -510,7 +510,7 @@ iptables_fw_init(void)
 	rc |= iptables_do_command("-t filter -A " CHAIN_TO_ROUTER " -p tcp --dport %d -j ACCEPT", gw_port);
 
 	// CHAIN_TO_ROUTER, packets to HTTP listening on fas_port on router ACCEPT
-	if (fas_port && !fas_remote) {
+	if (fas_port && !fas_remoteip) {
 		rc |= iptables_do_command("-t filter -A " CHAIN_TO_ROUTER " -p tcp --dport %d -j ACCEPT", fas_port);
 	}
 
@@ -577,8 +577,8 @@ iptables_fw_init(void)
 
 
 	// Allow access to remote FAS - CHAIN_OUTGOING and CHAIN_TO_INTERNET packets for remote FAS, ACCEPT
-	if (fas_remote && fas_port) {
-		rc |= iptables_do_command("-t filter -A " CHAIN_TO_INTERNET " -p tcp --destination %s --dport %d -j ACCEPT", fas_remote, fas_port);
+	if (fas_remoteip && fas_port) {
+		rc |= iptables_do_command("-t filter -A " CHAIN_TO_INTERNET " -p tcp --destination %s --dport %d -j ACCEPT", fas_remoteip, fas_port);
 	}
 
 	/* CHAIN_TO_INTERNET, packets marked TRUSTED: */
