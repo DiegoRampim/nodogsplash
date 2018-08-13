@@ -574,7 +574,9 @@ static int preauthenticated(struct MHD_Connection *connection,
  * @param originurl
  * @return
  */
-static int encode_and_redirect_to_splashpage(struct MHD_Connection *connection, const char *originurl, char *token)
+static int encode_and_redirect_to_splashpage(struct MHD_Connection *connection,
+											const char *originurl,
+											const char *token)
 {
 	char *splashpageurl = NULL;
 	char *target = NULL;
@@ -601,7 +603,7 @@ static int encode_and_redirect_to_splashpage(struct MHD_Connection *connection, 
 			safe_asprintf(&splashpageurl, "http://%s:%u/%s?clientip=%s&redir=%s",
 				target, config->fas_port, config->fas_path, token, encoded);
 		} else {
-			safe_asprintf(&splashpageurl, "http://%s:%u/%s?authaction=http://%s:%u/%s/?tok=%s&redir=%s",
+			safe_asprintf(&splashpageurl, "http://%s:%u/%s?authaction=http://%s:%u/%s/&tok=%s&redir=%s",
 				target, config->fas_port, config->fas_path, config->gw_address, config->gw_port, config->authdir, token, encoded);
 		}
 	} else {
