@@ -763,7 +763,7 @@ config_read(const char *filename)
 			}
 			break;
 		case oFasSecureEnabled:
-			if (sscanf(p1, "%u", &config.fas_secure_enabled) < 1) {
+			if (sscanf(p1, "%d", &config.fas_secure_enabled) < 1) {
 				debug(LOG_ERR, "Bad arg %s to option %s on line %d in %s", p1, s, linenum, filename);
 				debug(LOG_ERR, "Exiting...");
 				exit(-1);
