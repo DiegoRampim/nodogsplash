@@ -575,11 +575,52 @@ static int preauthenticated(struct MHD_Connection *connection,
  * @param originurl
  * @return
  */
-static int encode_and_redirect_to_splashpage(struct MHD_Connection *connection, const char *originurl, char *token )
+static int encode_and_redirect_to_splashpage(struct MHD_Connection *connection, const char *originurl, char *token)
 {
 	char *splashpageurl = NULL;
-	char *ip_address = NULL;
-	char *querydl = "?";
+	char *target = NULL;
+	char encoded[2048];
+	s_config *config;
+	int ret;
+
+	config = config_get_config();
+
+	memset(encoded, 0, sizeof(encoded));
+	if (originurl) {
+		if (uh_urlencode(encoded, sizeof(encoded), originurl, strlen(originurl)) == -1) {
+			debug(LOG_WARNING, "could not encode url");
+		} else {
+			debug(LOG_DEBUG, "originurl: %s", originurl);
+		}
+	}
+
+	if (config->fas_port) {
+		target = (config->fas_remoteip ? config->fas_remoteip : config->gw_address);
+
+		// append clientip or authaction url
+		if (config->fas_secure_enabled) {
+			safe_asprintf(&splashpageurl, "http://%s:%u/%s?clientip=%s&redir=%s",
+				target, config->fas_port, config->fas_path, token, encoded);
+		} else {
+			safe_asprintf(&splashpageurl, "http://%s:%u/%s?authaction=http://%s:%u/%s/?tok=%s&redir=%s",
+				target, config->fas_port, config->fas_path, config->gw_address, config->gw_port, config->authdir, token, encoded);
+		}
+	} else {
+		safe_asprintf(&splashpageurl, "http://%s:%u/%s?redir=%s",
+			config->gw_address, config->gw_port, config->splashpage, encoded);
+	}
+
+	debug(LOG_DEBUG, "splashpageurl: %s", splashpageurl);
+
+	ret = send_redirect_temp(connection, splashpageurl);
+	free(splashpageurl);
+
+	return ret;
+}
+/*
+static int encode_and_redirect_to_splashpage(struct MHD_Connection *connection, const char *originurl)
+{
+	char *splashpageurl = NULL;
 	char encoded[2048];
 	int ret;
 	s_config *config = config_get_config();
@@ -593,39 +634,22 @@ static int encode_and_redirect_to_splashpage(struct MHD_Connection *connection, 
 		}
 	}
 
-	if (config->fas_port) {
-		safe_asprintf(&ip_address, "%s", config->gw_address);
-
-		if (config->fas_remoteip) {
-			safe_asprintf(&ip_address, "%s", config->fas_remoteip);
-		}
-		safe_asprintf(&splashpageurl, "http://%s:%u%s",
-			ip_address, config->fas_port, config->fas_path);
-		if (config->fas_secure_enabled != 1) {
-			querydl = "&";
-			safe_asprintf(&splashpageurl, "%s?authaction=http://%s:%u/%s/?tok=%s",
-				splashpageurl, config->gw_address, config->gw_port, config->authdir, token);
-		} else {
-			querydl = "&";
-			safe_asprintf(&splashpageurl, "%s?clientip=%s",
-				splashpageurl, token);
-		}
+	if (encoded[0]) {
+		safe_asprintf(&splashpageurl, "http://%s:%u/%s?redir=%s",
+			config->gw_address, config->gw_port, config->splashpage, encoded);
 	} else {
 		safe_asprintf(&splashpageurl, "http://%s:%u/%s",
 			config->gw_address, config->gw_port, config->splashpage);
-	}
-
-	if (encoded[0]) {
-		safe_asprintf(&splashpageurl, "%s%sredir=%s", splashpageurl, querydl, encoded);
 	}
 
 	debug(LOG_DEBUG, "splashpageurl: %s", splashpageurl);
 
 	ret = send_redirect_temp(connection, splashpageurl);
 	free(splashpageurl);
-	free(ip_address);
+
 	return ret;
 }
+*/
 
 /**
  * @brief redirect_to_splashpage
