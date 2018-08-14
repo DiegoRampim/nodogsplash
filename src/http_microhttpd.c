@@ -53,7 +53,7 @@ static int get_host_value_callback(void *cls, enum MHD_ValueKind kind, const cha
 static int serve_file(struct MHD_Connection *connection, t_client *client, const char *url);
 static int show_splashpage(struct MHD_Connection *connection, t_client *client);
 static int show_statuspage(struct MHD_Connection *connection, t_client *client);
-static int encode_and_redirect_to_splashpage(struct MHD_Connection *connection, const char *originurl, char *token);
+static int encode_and_redirect_to_splashpage(struct MHD_Connection *connection, const char *originurl, const char *token);
 static int redirect_to_splashpage(struct MHD_Connection *connection, t_client *client, const char *host, const char *url);
 static int send_error(struct MHD_Connection *connection, int error);
 static int send_redirect_temp(struct MHD_Connection *connection, const char *url);
@@ -574,9 +574,7 @@ static int preauthenticated(struct MHD_Connection *connection,
  * @param originurl
  * @return
  */
-static int encode_and_redirect_to_splashpage(struct MHD_Connection *connection,
-											const char *originurl,
-											const char *token)
+static int encode_and_redirect_to_splashpage(struct MHD_Connection *connection, const char *originurl, const char *token)
 {
 	char *splashpageurl = NULL;
 	char *target = NULL;
@@ -629,10 +627,10 @@ static int encode_and_redirect_to_splashpage(struct MHD_Connection *connection,
  */
 static int redirect_to_splashpage(struct MHD_Connection *connection, t_client *client, const char *host, const char *url)
 {
-	char *originurl = NULL;
+	const char *originurl = NULL;
 	char *query = NULL;
 	int ret = 0;
-	char *token = NULL;
+	const char *token = NULL;
 	s_config *config = config_get_config();
 
 	get_query(connection, &query);
